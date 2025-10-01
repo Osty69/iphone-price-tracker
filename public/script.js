@@ -245,7 +245,19 @@ renderPriceChart() {
 async loadPrices() {
     try {
         console.log('Loading prices...');
-        const response = await fetch('/api/prices');
+        
+        // Автоматически определяем URL API
+        const baseUrl = window.location.origin;
+        const apiUrl = `${baseUrl}/api/prices`;
+        
+        console.log('Fetching from:', apiUrl);
+        
+        const response = await fetch(apiUrl);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
         const data = await response.json();
         console.log('Prices loaded:', data);
         
@@ -265,10 +277,11 @@ async loadPrices() {
         
         this.renderPrices(data.prices);
         this.updateStats(data.prices);
+        
     } catch (error) {
         console.error('Error loading prices:', error);
         document.getElementById('pricesList').innerHTML = 
-            '<div class="loading">Ошибка загрузки цен</div>';
+            '<div class="loading">Ошибка загрузки цен. Попробуйте обновить страницу.</div>';
     }
 }
 
@@ -416,6 +429,19 @@ async loadPriceHistory(storeId) {
     }
 
     try {
+        const baseUrl = window.location.origin;
+        const apiUrl = `${baseUrl}/api/history/${storeId}`;
+        
+        console.log('Loading history from:', apiUrl);
+        
+        const response = await fetch(apiUrl);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const history = await response.json();
+        
         // Находим название магазина по ID
         const storeElement = document.querySelector(`.price-item[data-store-id="${storeId}"]`);
         if (!storeElement) {
@@ -424,9 +450,6 @@ async loadPriceHistory(storeId) {
         }
         
         const storeName = storeElement.querySelector('.store-name').textContent;
-        
-        const response = await fetch(`/api/history/${storeId}`);
-        const history = await response.json();
         
         // Сохраняем историю для использования в диаграмме
         this.currentHistory = history;
@@ -439,10 +462,11 @@ async loadPriceHistory(storeId) {
         if (document.querySelector('[data-view="chart"]').classList.contains('active')) {
             this.renderPriceChart();
         }
+        
     } catch (error) {
         console.error('Error loading history:', error);
         document.getElementById('priceHistory').innerHTML = 
-            '<div class="loading">Ошибка загрузки истории</div>';
+            '<div class="loading">Ошибка загрузки истории цен</div>';
     }
 }
 
@@ -523,29 +547,38 @@ async loadPriceHistory(storeId) {
 }
 
     async checkPricesNow() {
-        this.showLoading();
+    this.showLoading();
+    
+    try {
+        const baseUrl = window.location.origin;
+        const apiUrl = `${baseUrl}/api/check-now`;
         
-        try {
-            const response = await fetch('/api/check-now', { method: 'POST' });
-            const result = await response.json();
-            
-            console.log('Price check completed:', result);
-            
-            // Ждем немного чтобы сервер успел обновить цены
-            setTimeout(async () => {
-                await this.loadPrices();
-                this.hideLoading();
-                
-                // Показываем уведомление об успехе
-                this.showNotification('Цены успешно обновлены!', 'success');
-            }, 2000);
-            
-        } catch (error) {
-            console.error('Error checking prices:', error);
-            this.hideLoading();
-            this.showNotification('Ошибка при обновлении цен', 'error');
+        console.log('Manual price check:', apiUrl);
+        
+        const response = await fetch(apiUrl, { 
+            method: 'POST' 
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
         }
+        
+        const result = await response.json();
+        console.log('Price check completed:', result);
+        
+        // Ждем немного чтобы парсинг завершился и обновляем цены
+        setTimeout(async () => {
+            await this.loadPrices();
+            this.hideLoading();
+            this.showNotification('Цены успешно обновлены!', 'success');
+        }, 3000);
+        
+    } catch (error) {
+        console.error('Error checking prices:', error);
+        this.hideLoading();
+        this.showNotification('Ошибка при обновлении цен', 'error');
     }
+}
 
     showNotification(message, type) {
         const notification = document.createElement('div');
