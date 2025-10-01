@@ -6,23 +6,11 @@
       "use": "@vercel/node"
     },
     {
-      "src": "api/parse-prices.js",
-      "use": "@vercel/node"
-    },
-    {
       "src": "public/**/*",
       "use": "@vercel/static"
     }
   ],
   "routes": [
-    {
-      "src": "/api/prices",
-      "dest": "/api/parse-prices.js"
-    },
-    {
-      "src": "/api/check-now",
-      "dest": "/api/parse-prices.js"
-    },
     {
       "src": "/api/(.*)",
       "dest": "/api/server.js"
