@@ -2,48 +2,48 @@ const axios = require('axios')
 
 // Функция для извлечения цены из текста
 function extractPrice(text) {
-	if (!text) return null
+    if (!text) return null;
+    if (text.trim().length < 5) return null;
 
-	// Пропускаем пустые тексты которые мы видели в логах
-	if (text.trim().length < 10) return null
+    console.log('🔎 Analyzing text:', text.substring(0, 100));
 
-	console.log('🔎 Анализируем текст:', text.substring(0, 100))
+    // Убираем HTML теги и лишние пробелы
+    const cleanText = text
+        .replace(/<[^>]*>/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
 
-	// Убираем HTML теги и лишние пробелы
-	const cleanText = text
-		.replace(/<[^>]*>/g, ' ')
-		.replace(/\s+/g, ' ')
-		.trim()
+    // Ищем цены в разных форматах
+    const pricePatterns = [
+        /(\d{1,3}(?:\s?\d{3})*(?:\s?[.,]\s?\d{2})?)\s*[₽руб]/i,
+        /цена[^\d]{0,50}?(\d{1,3}(?:\s?\d{3})*(?:\s?[.,]\s?\d{2})?)/i,
+        /стоимость[^\d]{0,50}?(\d{1,3}(?:\s?\d{3})*(?:\s?[.,]\s?\d{2})?)/i,
+        /купить[^\d]{0,50}?(\d{1,3}(?:\s?\d{3})*(?:\s?[.,]\s?\d{2})?)/i,
+        /(\d{1,3}(?:\s?\d{3})*(?:\s?[.,]\s?\d{2})?)/,
+        /(\d{1,3}\s?\d{3})\s*[₽руб]?/i
+    ];
 
-	// Ищем цены в разных форматах
-	const pricePatterns = [
-		/(\d{1,3}(?:\s?\d{3})*(?:\s?[.,]\s?\d{2})?)\s*[₽руб]/i,
-		/цена[^\d]{0,50}?(\d{1,3}(?:\s?\d{3})*(?:\s?[.,]\s?\d{2})?)/i,
-		/"price":\s*"?(\d+(?:[.,]\d+)?)"?/,
-		/стоимость[^\d]{0,50}?(\d{1,3}(?:\s?\d{3})*(?:\s?[.,]\s?\d{2})?)/i,
-		/купить[^\d]{0,50}?(\d{1,3}(?:\s?\d{3})*(?:\s?[.,]\s?\d{2})?)/i,
-		/data-price="(\d+(?:[.,]\d+)?)"/,
-		/product_price[^>]*>([^<]+)/i,
-		/final-price[^>]*>([^<]+)/i,
-		/current-price[^>]*>([^<]+)/i,
-		/(\d{1,3}(?:\s?\d{3})*(?:\s?[.,]\s?\d{2})?)/,
-	]
+    for (let pattern of pricePatterns) {
+        const matches = cleanText.match(pattern);
+        if (matches && matches[1]) {
+            let priceStr = matches[1].replace(/\s/g, '').replace(',', '.');
+            
+            // Обрабатываем случаи типа "149.990"
+            if (priceStr.includes('.') && priceStr.split('.')[1].length === 3) {
+                priceStr = priceStr.replace('.', '');
+            }
+            
+            const price = parseFloat(priceStr);
 
-	for (let pattern of pricePatterns) {
-		const matches = cleanText.match(pattern)
-		if (matches && matches[1]) {
-			let priceStr = matches[1].replace(/\s/g, '').replace(',', '.')
+            // Расширенный диапазон для iPhone
+            if (price > 130000 && price < 200000) {
+                console.log(`💰 Found price: ${price}`);
+                return Math.round(price);
+            }
+        }
+    }
 
-			const price = parseFloat(priceStr)
-
-			if (price > 50000 && price < 300000) {
-				console.log(`💰 Найдена цена: ${price}`)
-				return Math.round(price)
-			}
-		}
-	}
-
-	return null
+    return null;
 }
 
 // Все парсеры в одном объекте

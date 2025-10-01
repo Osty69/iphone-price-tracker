@@ -1,153 +1,285 @@
-const express = require('express');
-const path = require('path');
-const { storeParsers } = require('../parsers/priceParsers');
+// Улучшенные заголовки для обхода защиты
+const getHeaders = (store) => {
+    const baseHeaders = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+        'Accept-Language': 'ru-RU,ru;q=0.9,en;q=0.8',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+        'Sec-Fetch-Dest': 'document',
+        'Sec-Fetch-Mode': 'navigate',
+        'Sec-Fetch-Site': 'none',
+        'Upgrade-Insecure-Requests': '1'
+    };
 
-const app = express();
+    // Специфичные заголовки для некоторых магазинов
+    if (store === 'iPiter') {
+        return {
+            ...baseHeaders,
+            'Referer': 'https://ipiter.ru/',
+            'Sec-Fetch-User': '?1'
+        };
+    }
 
-// Для Vercel
-const isVercel = process.env.VERCEL === '1';
-const publicPath = isVercel ? path.join(process.cwd(), 'public') : path.join(__dirname, '../public');
+    if (store === 'Sotovik') {
+        return {
+            ...baseHeaders,
+            'Referer': 'https://spb.sotovik.shop/'
+        };
+    }
 
-// Middleware
-app.use(express.json());
-app.use(express.static(publicPath));
-
-// Магазины
-const stores = [
-    { id: 1, name: 'BigGeek', url: 'https://biggeek.ru/products/smartfon-apple-iphone-17-pro-1-tb-kosmiceskij-oranzevyj-cosmic-orange#esim' },
-    { id: 2, name: 'Sotovik', url: 'https://spb.sotovik.shop/catalog/smartfony/apple_iphone_1/iphone_17_pro/15957/' },
-    { id: 3, name: 'iPiter', url: 'https://ipiter.ru/shop/apple_iphone_17_pro_1tb_nano-sim_esim_cosmic_orange_color' },
-    { id: 4, name: 'iStudio', url: 'https://spb.istudio-shop.ru/catalog/iphone/iphone-17-pro/apple-iphone-17-pro-1tb.html' },
-    { id: 5, name: 'ReStore', url: 'https://re-store.ru/catalog/10117PRO1TBORGE/' },
-    { id: 6, name: 'PiterGSM', url: 'https://pitergsm.ru/catalog/phones/iphone/iphone-17-pro/esim/122644/' },
-    { id: 7, name: 'TehnoYard', url: 'http://tehnoyard.ru/smartfony/appleiphone/iphone-17-pro/apple-iphone-17-pro-1tb-esim-cosmic-orange-oranzhevyj' },
-    { id: 8, name: 'Technolove', url: 'https://technolove.ru/catalog/product/smartfon_apple_iphone_17_pro_1tb_cosmic_orange_oranzhevyy_esim/' }
-];
-
-// Демо-цены как fallback
-const demoPrices = {
-    'BigGeek': 149990,
-    'Sotovik': 148990,
-    'iPiter': 150490,
-    'iStudio': 149590,
-    'ReStore': 152990,
-    'PiterGSM': 147990,
-    'TehnoYard': 149190,
-    'Technolove': 174990
+    return baseHeaders;
 };
 
-// Главный endpoint - всегда парсит актуальные цены
-app.get('/api/prices', async (req, res) => {
-    console.log('🔄 Parsing fresh prices...');
-    
-    try {
-        const prices = [];
-        
-        // Парсим все магазины
-        for (const store of stores) {
-            try {
-                console.log(`🔍 Checking ${store.name}...`);
-                const parser = storeParsers[store.name] || storeParsers.default;
-                const price = await parser(store.url);
-                
-                if (price) {
-                    console.log(`✅ ${store.name}: ${price.toLocaleString('ru-RU')} руб.`);
-                    prices.push({
-                        id: store.id,
-                        name: store.name,
-                        price: price,
-                        url: store.url,
-                        timestamp: new Date().toISOString(),
-                        source: 'real'
-                    });
-                } else {
-                    console.log(`⚠️ ${store.name}: using demo price`);
-                    prices.push({
-                        id: store.id,
-                        name: store.name,
-                        price: demoPrices[store.name],
-                        url: store.url,
-                        timestamp: new Date().toISOString(),
-                        source: 'demo'
-                    });
-                }
-                
-                // Небольшая задержка между запросами
-                await new Promise(resolve => setTimeout(resolve, 1000));
-                
-            } catch (error) {
-                console.error(`💥 ${store.name} error:`, error.message);
-                prices.push({
-                    id: store.id,
-                    name: store.name,
-                    price: demoPrices[store.name],
-                    url: store.url,
-                    timestamp: new Date().toISOString(),
-                    source: 'error'
-                });
-            }
+// Встроенные парсеры магазинов с улучшенными заголовками
+const storeParsers = {
+    'BigGeek': async (url) => {
+        try {
+            const { data } = await axios.get(url, {
+                timeout: 15000,
+                headers: getHeaders('BigGeek')
+            });
+            return extractPrice(data);
+        } catch (error) {
+            console.error('❌ BigGeek parser error:', error.message);
+            return null;
         }
-        
-        console.log(`✅ Parsing completed: ${prices.length} stores`);
-        
-        res.json({
-            prices: prices,
-            lastUpdate: new Date().toISOString(),
-            nextUpdate: new Date(Date.now() + 10 * 60 * 1000).toISOString()
-        });
-        
-    } catch (error) {
-        console.error('💥 API error:', error);
-        
-        // Fallback - демо-цены
-        const fallbackPrices = stores.map(store => ({
-            id: store.id,
-            name: store.name,
-            price: demoPrices[store.name],
-            url: store.url,
-            timestamp: new Date().toISOString(),
-            source: 'fallback'
-        }));
-        
-        res.json({
-            prices: fallbackPrices,
-            lastUpdate: new Date().toISOString(),
-            nextUpdate: new Date(Date.now() + 10 * 60 * 1000).toISOString()
-        });
+    },
+
+    'Sotovik': async (url) => {
+        try {
+            const { data } = await axios.get(url, {
+                timeout: 20000,
+                headers: getHeaders('Sotovik')
+            });
+
+            // Ищем в структурированных данных
+            const jsonLdMatch = data.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/);
+            if (jsonLdMatch) {
+                try {
+                    const jsonData = JSON.parse(jsonLdMatch[1]);
+                    if (jsonData.offers && jsonData.offers.price) {
+                        const price = parseInt(jsonData.offers.price);
+                        if (price > 140000 && price < 200000) return price;
+                    }
+                } catch (e) {}
+            }
+
+            const metaMatches = data.match(/<meta[^>]*content="[^"]*(\d{5,7})[^"]*"[^>]*>/g);
+            if (metaMatches) {
+                for (let meta of metaMatches) {
+                    const priceMatch = meta.match(/(\d{5,7})/);
+                    if (priceMatch) {
+                        const price = parseInt(priceMatch[1]);
+                        if (price > 140000 && price < 200000) return price;
+                    }
+                }
+            }
+            return extractPrice(data);
+        } catch (error) {
+            console.error('❌ Sotovik parser error:', error.message);
+            return null;
+        }
+    },
+
+    'iPiter': async (url) => {
+        try {
+            const { data } = await axios.get(url, {
+                timeout: 15000,
+                headers: getHeaders('iPiter')
+            });
+            
+            // Специфичный поиск для iPiter
+            const pricePatterns = [
+                /<span[^>]*class="[^"]*price[^"]*"[^>]*>([^<]+)<\/span>/i,
+                /<div[^>]*class="[^"]*price[^"]*"[^>]*>([^<]+)<\/div>/i,
+                /"price":\s*"(\d+)"/i,
+                /data-price="(\d+)"/i
+            ];
+
+            for (let pattern of pricePatterns) {
+                const match = data.match(pattern);
+                if (match) {
+                    const price = extractPrice(match[1]);
+                    if (price) return price;
+                }
+            }
+
+            return extractPrice(data);
+        } catch (error) {
+            console.error('❌ iPiter parser error:', error.message);
+            return null;
+        }
+    },
+
+    'iStudio': async (url) => {
+        try {
+            const { data } = await axios.get(url, {
+                timeout: 20000,
+                headers: getHeaders('iStudio')
+            });
+
+            const priorityPatterns = [
+                /(\d{1,3}(?:\s?\d{3})*(?:\s?[.,]\s?\d{2})?)\s*[₽руб]/gi,
+                /цена[^>]*>([^<]+)/gi,
+                /class="[^"]*price[^"]*"[^>]*>([^<]+)</gi,
+                /itemprop="price"[^>]*content="([^"]+)"/i
+            ];
+
+            for (let pattern of priorityPatterns) {
+                const matches = [...data.matchAll(pattern)];
+                for (let match of matches) {
+                    const price = extractPrice(match[1] || match[0]);
+                    if (price && price > 140000 && price < 170000) return price;
+                }
+            }
+
+            const allNumbers = data.match(/\d{5,7}/g);
+            if (allNumbers) {
+                const uniqueNumbers = [...new Set(allNumbers)];
+                for (let num of uniqueNumbers) {
+                    const price = parseInt(num);
+                    if (price > 140000 && price < 170000) return price;
+                }
+            }
+            return null;
+        } catch (error) {
+            console.error('❌ iStudio parser error:', error.message);
+            return null;
+        }
+    },
+
+    'ReStore': async (url) => {
+        try {
+            const { data } = await axios.get(url, {
+                timeout: 15000,
+                headers: getHeaders('ReStore')
+            });
+            
+            // ReStore часто использует data-атрибуты
+            const dataPriceMatch = data.match(/data-price="(\d+)"/);
+            if (dataPriceMatch) {
+                const price = parseInt(dataPriceMatch[1]);
+                if (price > 140000 && price < 200000) return price;
+            }
+            
+            return extractPrice(data);
+        } catch (error) {
+            console.error('❌ ReStore parser error:', error.message);
+            return null;
+        }
+    },
+
+    'PiterGSM': async (url) => {
+        try {
+            const { data } = await axios.get(url, {
+                timeout: 20000,
+                headers: getHeaders('PiterGSM')
+            });
+
+            // Ищем в JSON данных
+            const jsonMatches = [
+                ...data.matchAll(/"price":\s*"?(\d+(?:\.\d+)?)"?/g),
+                ...data.matchAll(/"value":\s*"?(\d+(?:\.\d+)?)"?/g),
+            ];
+
+            for (let match of jsonMatches) {
+                const price = parseInt(match[1]);
+                if (price > 140000 && price < 200000) return price;
+            }
+
+            // Ищем в data-атрибутах
+            const dataPriceMatches = data.match(/data-price="(\d+)"/g);
+            if (dataPriceMatches) {
+                for (let match of dataPriceMatches) {
+                    const priceMatch = match.match(/data-price="(\d+)"/);
+                    if (priceMatch) {
+                        const price = parseInt(priceMatch[1]);
+                        if (price > 140000 && price < 200000) return price;
+                    }
+                }
+            }
+
+            // Ищем большие числа
+            const largeNumbers = data.match(/\d{5,7}/g);
+            if (largeNumbers) {
+                const uniqueNumbers = [...new Set(largeNumbers)];
+                for (let num of uniqueNumbers) {
+                    const price = parseInt(num);
+                    if (price > 140000 && price < 200000) return price;
+                }
+            }
+            return null;
+        } catch (error) {
+            console.error('❌ PiterGSM parser error:', error.message);
+            return null;
+        }
+    },
+
+    'TehnoYard': async (url) => {
+        try {
+            const { data } = await axios.get(url, {
+                timeout: 15000,
+                headers: getHeaders('TehnoYard')
+            });
+            return extractPrice(data);
+        } catch (error) {
+            console.error('❌ TehnoYard parser error:', error.message);
+            return null;
+        }
+    },
+
+    'Technolove': async (url) => {
+        try {
+            const { data } = await axios.get(url, {
+                timeout: 20000,
+                headers: getHeaders('Technolove')
+            });
+
+            // Technolove - ищем в различных форматах
+            const patterns = [
+                /(\d{1,3}(?:\s?\d{3})*(?:\s?[.,]\s?\d{2})?)\s*[₽руб]/gi,
+                /цена[^>]*>([^<]+)/gi,
+                /стоимость[^>]*>([^<]+)/gi,
+                /class="[^"]*price[^"]*"[^>]*>([^<]+)</gi,
+                /id="price"[^>]*>([^<]+)</gi
+            ];
+
+            for (let pattern of patterns) {
+                const matches = [...data.matchAll(pattern)];
+                for (let match of matches) {
+                    const price = extractPrice(match[1] || match[0]);
+                    if (price && price > 140000 && price < 200000) return price;
+                }
+            }
+
+            // Ищем числа в диапазоне
+            const allNumbers = data.match(/\d{5,7}/g);
+            if (allNumbers) {
+                const uniqueNumbers = [...new Set(allNumbers)];
+                for (let num of uniqueNumbers) {
+                    const price = parseInt(num);
+                    if (price > 140000 && price < 200000) return price;
+                }
+            }
+            return null;
+        } catch (error) {
+            console.error('❌ Technolove parser error:', error.message);
+            return null;
+        }
+    },
+
+    'default': async (url) => {
+        try {
+            const { data } = await axios.get(url, {
+                timeout: 10000,
+                headers: getHeaders('default')
+            });
+            return extractPrice(data);
+        } catch (error) {
+            console.error('❌ Default parser error:', error.message);
+            return null;
+        }
     }
-});
-
-// Простой endpoint для ручного обновления
-app.post('/api/check-now', async (req, res) => {
-    console.log('🔄 Manual price check requested');
-    
-    // Просто возвращаем успех, т.к. /api/prices всегда парсит свежие цены
-    res.json({ 
-        message: 'Prices will be updated on next load', 
-        updated: new Date().toLocaleString('ru-RU')
-    });
-});
-
-// Упрощенная история (пустая)
-app.get('/api/history/:storeId', (req, res) => {
-    res.json([]);
-});
-
-app.get('/api/next-update', (req, res) => {
-    res.json({
-        nextUpdate: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
-        lastUpdate: new Date().toISOString()
-    });
-});
-
-// Serve frontend
-app.get('/', (req, res) => {
-    res.sendFile(path.join(publicPath, 'index.html'));
-});
-
-app.get('*', (req, res) => {
-    res.sendFile(path.join(publicPath, 'index.html'));
-});
-
-// Экспорт для Vercel
-module.exports = app;
+};
