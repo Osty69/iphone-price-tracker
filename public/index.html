@@ -71,23 +71,25 @@
 		</div>
 
 		<div class="history-section">
-    <h2>📈 История изменения цен</h2>
-    
-    <!-- Контейнер для диаграммы -->
-    <div id="chartContainer" class="chart-container hidden">
-        <canvas id="priceChart"></canvas>
-    </div>
-    
-    <!-- Переключатель между таблицей и диаграммой -->
-    <div class="view-toggle">
-        <button class="view-btn active" data-view="table">📋 Таблица</button>
-        <button class="view-btn" data-view="chart">📊 Диаграмма</button>
-    </div>
-    
-    <div id="priceHistory" class="history-list">
-        <div class="loading">Выберите магазин из списка выше чтобы увидеть историю цен</div>
-    </div>
-</div>
+			<h2>📈 История изменения цен</h2>
+
+			<!-- Переключатель между таблицей и диаграммой -->
+			<div class="view-toggle">
+				<button class="view-btn active" data-view="table">📋 Таблица</button>
+				<button class="view-btn" data-view="chart">📊 Диаграмма</button>
+			</div>
+
+			<!-- Контейнер для диаграммы -->
+			<div id="chartContainer" class="chart-container hidden">
+				<canvas id="priceChart"></canvas>
+			</div>
+
+			<div id="priceHistory" class="history-list">
+				<div class="loading">
+					Выберите магазин из списка выше чтобы увидеть историю цен
+				</div>
+			</div>
+		</div>
 		<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 		<script src="script.js"></script>
 	</body>
