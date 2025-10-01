@@ -1,17 +1,35 @@
-require('dotenv').config();
 const express = require('express');
 const path = require('path');
-const { MongoClient } = require('mongodb');
 const { storeParsers } = require('./parsers/priceParsers');
-const fs = require('fs');
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+
+// Для Vercel используем правильные пути
+const isVercel = process.env.VERCEL === '1';
+const publicPath = isVercel ? path.join(__dirname, '../public') : path.join(__dirname, 'public');
+const parsersPath = isVercel ? path.join(__dirname, '../parsers') : path.join(__dirname, 'parsers');
 
 // Middleware
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(publicPath));
 
+// Динамически импортируем парсеры
+let storeParsers;
+try {
+  if (isVercel) {
+    storeParsers = require('./parsers/priceParsers').storeParsers;
+  } else {
+    storeParsers = require('./parsers/priceParsers').storeParsers;
+  }
+} catch (error) {
+  console.error('❌ Error loading parsers:', error);
+  // Fallback парсеры
+  storeParsers = {
+    default: async () => null
+  };
+}
+
+// Остальной код server.js...
 // Исходные данные магазинов
 const stores = [
     { id: 1, name: 'BigGeek', url: 'https://biggeek.ru/products/smartfon-apple-iphone-17-pro-1-tb-kosmiceskij-oranzevyj-cosmic-orange#esim' },
