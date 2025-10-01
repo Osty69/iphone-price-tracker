@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="ru">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>iPhone 17 Pro Price Tracker</title>
+		<link rel="stylesheet" href="style.css" />
+	</head>
+	<body>
+		<div class="container">
+			<!-- Переключатель темы -->
+			<div class="theme-switcher">
+				<button class="theme-toggle" id="themeToggle">
+					<span>🌙</span>
+					<span>Темная тема</span>
+				</button>
+			</div>
+
+			<header>
+				<div class="header-info">
+					<h1>📱 iPhone 17 Pro 1TB Price Tracker</h1>
+					<div class="update-info">
+						<div class="last-update">
+							Последнее обновление: <span id="lastUpdateTime">-</span>
+						</div>
+						<div class="update-timer">
+							Следующее обновление:
+							<span id="nextUpdateTimer" class="timer-value">-</span>
+						</div>
+					</div>
+				</div>
+				<button id="checkNow" class="btn-primary">Проверить цены сейчас</button>
+			</header>
+
+			<!-- Индикатор загрузки -->
+			<div id="loadingIndicator" class="loading-indicator hidden">
+				<div class="loading-spinner"></div>
+				<p>Идет загрузка цен...</p>
+			</div>
+
+			<div class="stats">
+				<div class="stat-card">
+					<h3>🔥 Минимальная цена</h3>
+					<div id="minPrice" class="price">-</div>
+					<div id="minStore" class="store">-</div>
+				</div>
+				<div class="stat-card">
+					<h3>📊 Средняя цена</h3>
+					<div id="avgPrice" class="price">-</div>
+				</div>
+				<div class="stat-card">
+					<h3>💎 Максимальная цена</h3>
+					<div id="maxPrice" class="price">-</div>
+					<div id="maxStore" class="store">-</div>
+				</div>
+			</div>
+
+			<div class="prices-section">
+				<h2>🏪 Текущие цены в магазинах</h2>
+				<div id="pricesList" class="prices-list">
+					<div class="loading">Загрузка цен...</div>
+				</div>
+			</div>
+
+			<div class="price-disclaimer">
+				<small
+					>ℹ️ Фактическая цена может отличаться от указанной на сайте магазина.
+					Рекомендуем уточнять актуальную стоимость перед покупкой.</small
+				>
+			</div>
+		</div>
+
+		<div class="history-section">
+    <h2>📈 История изменения цен</h2>
+    
+    <!-- Контейнер для диаграммы -->
+    <div id="chartContainer" class="chart-container hidden">
+        <canvas id="priceChart"></canvas>
+    </div>
+    
+    <!-- Переключатель между таблицей и диаграммой -->
+    <div class="view-toggle">
+        <button class="view-btn active" data-view="table">📋 Таблица</button>
+        <button class="view-btn" data-view="chart">📊 Диаграмма</button>
+    </div>
+    
+    <div id="priceHistory" class="history-list">
+        <div class="loading">Выберите магазин из списка выше чтобы увидеть историю цен</div>
+    </div>
+</div>
+		<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+		<script src="script.js"></script>
+	</body>
+</html>
